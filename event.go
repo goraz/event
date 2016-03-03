@@ -1,11 +1,7 @@
 package event
 
-import (
-	"reflect"
-)
-
 type eventStore struct {
-	fn    reflect.Value
+	fn    func(interface{})
 	order float32
 	once  bool
 }

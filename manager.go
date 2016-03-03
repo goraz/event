@@ -1,8 +1,6 @@
 package event
 
 import (
-	"fmt"
-	"reflect"
 	"sort"
 	"sync"
 )
@@ -10,68 +8,50 @@ import (
 //Manager is simple event manager
 type Manager struct {
 	lock   sync.Mutex
-	events map[reflect.Type]eventsStore
+	events map[string]eventsStore
 }
 
-func (manager *Manager) listen(fn interface{}, order float32, once bool) error {
+func (manager *Manager) listen(name string, fn func(interface{}), order float32, once bool) {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
-	value := reflect.ValueOf(fn)
-	if value.Kind() != reflect.Func {
-		return fmt.Errorf("%s is not of type reflect.Func", value.Kind())
-	}
 
-	argsType := value.Type()
-	if argsType.NumIn() != 1 {
-		return fmt.Errorf("Handler must have a single argument")
-	}
-	structType := argsType.In(0)
-	manager.events[structType] = append(manager.events[structType], eventStore{
-		fn:    value,
+	manager.events[name] = append(manager.events[name], eventStore{
+		fn:    fn,
 		order: order,
 		once:  once,
 	})
-	sort.Sort(manager.events[structType])
-	return nil
+	sort.Sort(manager.events[name])
+	return
 }
 
 //Subscribe  listen to  event
-func (manager *Manager) Subscribe(fn interface{}, order float32) {
-	err := manager.listen(fn, order, false)
-	if err != nil {
-		panic(err)
-	}
+func (manager *Manager) Subscribe(name string, fn func(interface{}), order float32) {
+	manager.listen(name, fn, order, false)
 }
 
 //SubscribeOnce listen to  event for once
-func (manager *Manager) SubscribeOnce(fn interface{}, order float32) {
-	err := manager.listen(fn, order, true)
-	if err != nil {
-		panic(err)
-	}
+func (manager *Manager) SubscribeOnce(name string, fn func(interface{}), order float32) {
+	manager.listen(name, fn, order, true)
 }
 
-// Publish executes callback defined for a event
-func (manager *Manager) Publish(event interface{}) {
+// Publish executes callback defined for event
+func (manager *Manager) Publish(name string, arg interface{}) {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
-	structType := reflect.TypeOf(event)
-	if events, ok := manager.events[structType]; ok {
-		args := [...]reflect.Value{reflect.ValueOf(event)}
+	if events, ok := manager.events[name]; ok {
 		for index, event := range events {
 			if event.once {
-				manager.remove(structType, index)
+				manager.remove(name, index)
 			}
-			event.fn.Call(args[:])
-
+			event.fn(arg)
 		}
 	}
 }
 
-func (manager *Manager) remove(structType reflect.Type, index int) {
+func (manager *Manager) remove(name string, index int) {
 	if index >= 0 {
-		manager.events[structType] = append(manager.events[structType][:index],
-			manager.events[structType][index+1:]...)
+		manager.events[name] = append(manager.events[name][:index],
+			manager.events[name][index+1:]...)
 	}
 }
 
@@ -79,6 +59,6 @@ func (manager *Manager) remove(structType reflect.Type, index int) {
 func NewManager() *Manager {
 	return &Manager{
 		sync.Mutex{},
-		make(map[reflect.Type]eventsStore),
+		make(map[string]eventsStore),
 	}
 }
