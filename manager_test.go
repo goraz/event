@@ -13,21 +13,24 @@ func TestEvent(t *testing.T) {
 	Convey("event test - test order", t, func() {
 		eventManager := NewManager()
 
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val++
+			return true
 		}, 1)
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val += 3
 			//1+2+3 . run at End
 			So(myEvent.val, ShouldEqual, 6)
+			return true
 		}, 3)
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val += 2
 			// 1+2. event.val += 3 run after this event
 			So(myEvent.val, ShouldEqual, 3)
+			return true
 		}, 2)
 
 		event := MyEvent1{}
@@ -41,18 +44,21 @@ func TestEvent(t *testing.T) {
 	Convey("event test - test once", t, func() {
 		eventManager := NewManager()
 
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val++
+			return true
 		}, 1)
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val += 3
+			return true
 		}, 3)
-		eventManager.SubscribeOnce("MyEvent1", func(event interface{}) {
+		eventManager.SubscribeOnce("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val += 2
 			So(myEvent.val, ShouldEqual, 3)
+			return true
 		}, 2)
 
 		event := MyEvent1{}
@@ -64,25 +70,82 @@ func TestEvent(t *testing.T) {
 
 	})
 
+	Convey("event test - test stop", t, func() {
+		eventManager := NewManager()
+
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val++
+			return true
+		}, 1)
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val += 3
+			return true
+		}, 3)
+		eventManager.SubscribeOnce("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val += 2
+			So(myEvent.val, ShouldEqual, 3)
+			return false
+		}, 2)
+
+		event := MyEvent1{}
+		success := eventManager.Publish("MyEvent1", &event)
+
+		//1+2  - 3 not start
+		So(event.val, ShouldEqual, 3)
+		So(success, ShouldEqual, false)
+
+	})
+
 }
 
 func BenchmarkEvent(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		eventManager := NewManager()
 
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val++
+			return true
 		}, 1)
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val += 3
+			return true
 		}, 3)
-		eventManager.Subscribe("MyEvent1", func(event interface{}) {
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
 			myEvent := event.(*MyEvent1)
 			myEvent.val += 2
+			return true
 		}, 2)
 
+		event := MyEvent1{}
+		eventManager.Publish("MyEvent1", &event)
+
+	}
+}
+
+func BenchmarkPublish(b *testing.B) {
+	eventManager := NewManager()
+
+	eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+		myEvent := event.(*MyEvent1)
+		myEvent.val++
+		return true
+	}, 1)
+	eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+		myEvent := event.(*MyEvent1)
+		myEvent.val += 3
+		return true
+	}, 3)
+	eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+		myEvent := event.(*MyEvent1)
+		myEvent.val += 2
+		return true
+	}, 2)
+	for n := 0; n < b.N; n++ {
 		event := MyEvent1{}
 		eventManager.Publish("MyEvent1", &event)
 

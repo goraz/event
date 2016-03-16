@@ -11,7 +11,7 @@ type Manager struct {
 	events map[string]eventsStore
 }
 
-func (manager *Manager) listen(name string, fn func(interface{}), order float32, once bool) {
+func (manager *Manager) listen(name string, fn func(interface{}) bool, order float32, once bool) {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
 
@@ -25,17 +25,17 @@ func (manager *Manager) listen(name string, fn func(interface{}), order float32,
 }
 
 //Subscribe  listen to  event
-func (manager *Manager) Subscribe(name string, fn func(interface{}), order float32) {
+func (manager *Manager) Subscribe(name string, fn func(interface{}) bool, order float32) {
 	manager.listen(name, fn, order, false)
 }
 
 //SubscribeOnce listen to  event for once
-func (manager *Manager) SubscribeOnce(name string, fn func(interface{}), order float32) {
+func (manager *Manager) SubscribeOnce(name string, fn func(interface{}) bool, order float32) {
 	manager.listen(name, fn, order, true)
 }
 
-// Publish executes callback defined for event
-func (manager *Manager) Publish(name string, arg interface{}) {
+// Publish executes callback defined for event. if func return false stop execute and return false
+func (manager *Manager) Publish(name string, arg interface{}) bool {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
 	if events, ok := manager.events[name]; ok {
@@ -43,9 +43,12 @@ func (manager *Manager) Publish(name string, arg interface{}) {
 			if event.once {
 				manager.remove(name, index)
 			}
-			event.fn(arg)
+			if event.fn(arg) == false {
+				return false
+			}
 		}
 	}
+	return true
 }
 
 func (manager *Manager) remove(name string, index int) {

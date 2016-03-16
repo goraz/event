@@ -1,7 +1,7 @@
 package event
 
 type eventStore struct {
-	fn    func(interface{})
+	fn    func(interface{}) bool
 	order float32
 	once  bool
 }
