@@ -99,6 +99,53 @@ func TestEvent(t *testing.T) {
 
 	})
 
+	Convey("event test - test unsubscribe", t, func() {
+		eventManager := NewManager()
+
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val++
+			return true
+		}, 1)
+		eventID := eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val += 3
+			return true
+		}, 3)
+		eventManager.UnSubscribe("MyEvent1", eventID)
+
+		event := MyEvent1{}
+
+		success := eventManager.Publish("MyEvent1", &event)
+
+		So(event.val, ShouldEqual, 1)
+		So(success, ShouldEqual, true)
+
+	})
+
+	Convey("event test - test unsubscribeAll", t, func() {
+		eventManager := NewManager()
+
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val++
+			return true
+		}, 1)
+		eventManager.Subscribe("MyEvent1", func(event interface{}) bool {
+			myEvent := event.(*MyEvent1)
+			myEvent.val += 3
+			return true
+		}, 3)
+		eventManager.UnSubscribeAll("MyEvent1")
+
+		event := MyEvent1{}
+
+		eventManager.Publish("MyEvent1", &event)
+
+		So(event.val, ShouldEqual, 0)
+
+	})
+
 }
 
 func BenchmarkEvent(b *testing.B) {

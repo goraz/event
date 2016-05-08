@@ -4,6 +4,7 @@ type eventStore struct {
 	fn    func(interface{}) bool
 	order float32
 	once  bool
+	id    uint32
 }
 
 //eventsStore is array of  eventStore for sorting
